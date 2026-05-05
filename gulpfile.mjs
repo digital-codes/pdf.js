@@ -1725,7 +1725,7 @@ function buildLibHelper(bundleDefines, inputStream, outputDir) {
           "babel-plugin-istanbul",
           {
             cwd: __dirname,
-            include: ["src/**/*.js", "web/**/*.js"],
+            include: ["external/**/*.js", "src/**/*.js", "web/**/*.js"],
           },
         ]);
       }
