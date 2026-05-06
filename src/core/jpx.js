@@ -30,7 +30,7 @@ class JpxImage extends WasmImage {
   _noWasmFilename = "openjpeg_nowasm_fallback.js";
 
   static get instance() {
-    return shadow(this, "instance", new JpxImage());
+    return shadow(this, "instance", new JpxImage(/* trackInstance = */ true));
   }
 
   async decode(
