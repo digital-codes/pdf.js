@@ -27,13 +27,13 @@ class WasmImage {
 
   static #wasmUrl = null;
 
-  _buffer = null;
+  #buffer = null;
 
-  _filename = "";
+  #modulePromise = null;
 
-  _noWasmFilename = "";
+  _filename = null;
 
-  _modulePromise = null;
+  _noWasmFilename = null;
 
   static setOptions({ handler, useWasm, useWorkerFetch, wasmUrl }) {
     WasmImage.#useWasm = useWasm;
@@ -52,19 +52,22 @@ class WasmImage {
 
   static cleanup() {
     for (const instance of WasmImage.#instances) {
-      instance._modulePromise = null;
+      instance.#modulePromise = null;
     }
   }
 
-  constructor() {
+  constructor(trackInstance = false) {
     if (
       (typeof PDFJSDev === "undefined" || PDFJSDev.test("TESTING")) &&
       this.constructor === WasmImage
     ) {
       unreachable("Cannot initialize WasmImage.");
     }
-    // Keep track of the instances for `cleanup` purposes.
-    WasmImage.#instances.add(this);
+
+    if (trackInstance) {
+      // Keep track of the instances for `cleanup` purposes.
+      WasmImage.#instances.add(this);
+    }
   }
 
   async #getJsModule(fallbackCallback) {
@@ -83,22 +86,22 @@ class WasmImage {
 
   async #instantiateWasm(fallbackCallback, imports, successCallback) {
     try {
-      if (!this._buffer) {
+      if (!this.#buffer) {
         if (WasmImage.#useWorkerFetch) {
-          this._buffer = await fetchBinaryData(
+          this.#buffer = await fetchBinaryData(
             `${WasmImage.#wasmUrl}${this._filename}`
           );
         } else {
           if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
             throw new Error("Only worker-thread fetching supported.");
           }
-          this._buffer = await WasmImage.#handler.sendWithPromise(
+          this.#buffer = await WasmImage.#handler.sendWithPromise(
             "FetchBinaryData",
             { kind: "wasmUrl", filename: this._filename }
           );
         }
       }
-      const results = await WebAssembly.instantiate(this._buffer, imports);
+      const results = await WebAssembly.instantiate(this.#buffer, imports);
       return successCallback(results.instance);
     } catch (ex) {
       warn(`#instantiateWasm: ${ex}`);
@@ -109,7 +112,7 @@ class WasmImage {
   }
 
   _getModule(ImageDecoder) {
-    if (!this._modulePromise) {
+    if (!this.#modulePromise) {
       const { promise, resolve } = Promise.withResolvers();
       const promises = [promise];
       if (!WasmImage.#useWasm) {
@@ -122,9 +125,9 @@ class WasmImage {
           })
         );
       }
-      this._modulePromise = Promise.race(promises);
+      this.#modulePromise = Promise.race(promises);
     }
-    return this._modulePromise;
+    return this.#modulePromise;
   }
 
   async decode(bytes, _params) {
